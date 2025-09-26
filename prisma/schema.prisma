@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  admin_id       Int         @id @default(autoincrement())
+  admin_name     String
+  admin_email    String      @unique
+  admin_password String
+  admin_role     AdminRole   @default(superadmin)
+  admin_status   AdminStatus @default(active)
+}
+
+enum AdminRole {
+  superadmin
+  moderator
+}
+
+enum AdminStatus {
+  active
+  inactive
+}
+
+model Donor {
+  donor_id          Int        @id @default(autoincrement())
+  donor_name        String
+  donor_email       String     @unique
+  donor_password    String
+  donor_preferences String?
+  donor_contact     String?
+  donor_address     String?
+  donor_city        String?
+  donor_state       String?
+  donations         Donation[]
+  requests          Request[] // Added opposite relation
+}
+
+model NGO {
+  ngo_id              Int             @id @default(autoincrement())
+  ngo_name            String
+  ngo_email           String          @unique
+  ngo_password        String
+  ngo_registration_no String?         @unique
+  ngo_status          NGOStatus       @default(pending)
+  ngo_contact         String?
+  campaigns           Campaign[]
+  requirements        Requirement[]
+  inventory_items     InventoryItem[]
+  donations           Donation[]
+  requests            Request[] // Added opposite relation
+}
+
+enum NGOStatus {
+  pending
+  approved
+  rejected
+}
+
+model Campaign {
+  campaign_id           Int            @id @default(autoincrement())
+  ngo_id                Int
+  campaign_title        String
+  campaign_description  String?
+  campaign_date         DateTime
+  campaign_location     String
+  campaign_requirements String?
+  status                CampaignStatus @default(upcoming)
+  created_at            DateTime
+  updated_at            DateTime
+
+  ngo NGO @relation(fields: [ngo_id], references: [ngo_id])
+}
+
+enum CampaignStatus {
+  upcoming
+  ongoing
+  completed
+  cancelled
+}
+
+model Requirement {
+  requirement_id Int               @id @default(autoincrement())
+  ngo_id         Int
+  item_name      String
+  quantity       Int
+  urgency        Urgency           @default(medium)
+  expiry_date    DateTime?
+  status         RequirementStatus @default(open)
+
+  ngo       NGO        @relation(fields: [ngo_id], references: [ngo_id])
+  donations Donation[] // Added opposite relation
+}
+
+enum Urgency {
+  low
+  medium
+  high
+}
+
+enum RequirementStatus {
+  open
+  fulfilled
+  expired
+}
+
+model Donation {
+  donation_id      Int            @id @default(autoincrement())
+  requirement_id   Int?
+  donated_item     String
+  donated_quantity Int
+  pickup_or_drop   PickupOrDrop
+  donation_status  DonationStatus @default(pending)
+  donor_id         Int?
+  ngo_id           Int?
+
+  donor       Donor?       @relation(fields: [donor_id], references: [donor_id])
+  ngo         NGO?         @relation(fields: [ngo_id], references: [ngo_id])
+  requirement Requirement? @relation(fields: [requirement_id], references: [requirement_id])
+}
+
+enum PickupOrDrop {
+  pickup
+  drop
+}
+
+enum DonationStatus {
+  pending
+  received
+  completed
+  cancelled
+}
+
+model InventoryItem {
+  inventory_id     Int             @id @default(autoincrement())
+  ngo_id           Int
+  item_name        String
+  category         Category        @default(other)
+  current_quantity Int             @default(0)
+  minimum_stock    Int             @default(10)
+  unit             String          @default("units")
+  expiry_date      DateTime?
+  storage_location String?
+  notes            String?
+  status           InventoryStatus @default(in_stock)
+  created_at       DateTime
+  updated_at       DateTime
+
+  ngo NGO @relation(fields: [ngo_id], references: [ngo_id])
+}
+
+enum Category {
+  food
+  clothing
+  medical
+  educational
+  hygiene
+  electronics
+  furniture
+  other
+}
+
+enum InventoryStatus {
+  in_stock
+  low_stock
+  out_of_stock
+  expired
+}
+
+model Newsletter {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  subscribed_at   DateTime?
+  unsubscribed_at DateTime?
+}
+
+model Request {
+  request_id Int           @id @default(autoincrement())
+  donor_id   Int?
+  ngo_id     Int?
+  item_name  String
+  quantity   Int
+  status     RequestStatus @default(pending)
+
+  donor Donor? @relation(fields: [donor_id], references: [donor_id])
+  ngo   NGO?   @relation(fields: [ngo_id], references: [ngo_id])
+}
+
+enum RequestStatus {
+  pending
+  approved
+  rejected
+}
